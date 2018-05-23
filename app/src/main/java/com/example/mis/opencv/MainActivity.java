@@ -320,7 +320,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 //            Mat col_temp = new Mat();
 //            Core.flip(col,output,1);
 
-            output = col;
+            output = col;   
         }
 
 
