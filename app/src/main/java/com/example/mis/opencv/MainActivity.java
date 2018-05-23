@@ -189,38 +189,38 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 
-//        Mat init_col = inputFrame.rgba();
-//        Mat init = inputFrame.gray();
-        col  = inputFrame.rgba();
-        grey = inputFrame.gray();
+        Mat init_col = inputFrame.rgba();
+        Mat init = inputFrame.gray();
+//        col  = inputFrame.rgba();
+//        grey = inputFrame.gray();
         rects_m = new MatOfRect();
 
         //orientation correction
-//        if (phone_orientation == Orientation.LANDSCAPE_R){
-//
-//            Core.flip(init, grey, 0);
-//            Core.flip(init_col, col, 0);
-//        }
+        if (phone_orientation == Orientation.LANDSCAPE_R){
+
+            Core.flip(init, grey, 0);
+            Core.flip(init_col, col, 0);
+        }
 //        if (phone_orientation == Orientation.LANDSCAPE_L){
 //
 //            col = init_col;
 //            grey = init;
 //        }
-////        else if (phone_orientation == Orientation.PORTRAIT_UP){
-////
-////            Mat grey_temp = new Mat();
-////            Mat col_temp = new Mat();
-////
-////            Core.flip(init,grey_temp,0);
-////            Core.flip(init_col, col_temp, 0);
-////
-////            Core.transpose(grey_temp, grey);
-////            Core.transpose(col_temp, col);
-////        }
-//        else{
-//            col = init_col;
-//            grey = init;
+//        else if (phone_orientation == Orientation.PORTRAIT_UP){
+//
+//            Mat grey_temp = new Mat();
+//            Mat col_temp = new Mat();
+//
+//            Core.flip(init,grey_temp,0);
+//            Core.flip(init_col, col_temp, 0);
+//
+//            Core.transpose(grey_temp, grey);
+//            Core.transpose(col_temp, col);
 //        }
+        else{
+            col = init_col;
+            grey = init;
+        }
 
 
         if (face_cascade != null){
@@ -294,35 +294,37 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                 }
             }
         }
-//
-//        rects_m.release();
-//
-//        //orientation correction
-//        Mat output = new Mat();
-//        if (phone_orientation == Orientation.LANDSCAPE_R){
-//
+
+        rects_m.release();
+
+        //orientation correction
+        Mat output = new Mat();
+        if (phone_orientation == Orientation.LANDSCAPE_R){
+
 //            Mat col_temp = new Mat();
-//            Core.flip(col, output, 0);
-////            Core.flip(col_temp,output,1);
-//        }
+            Core.flip(col, output, 0);
+//            Core.flip(col_temp,output,1);
+        }
 //        else if (phone_orientation == Orientation.LANDSCAPE_L){
 //
 //            Mat col_temp = new Mat();
 //            Core.flip(col,output,1);
 //        }
-////        else if (phone_orientation == Orientation.PORTRAIT_UP){
-////
-////            Mat col_temp = new Mat();
-////            Core.transpose(col, col_temp);
-////            Core.flip(col_temp, output, 0);
-////        }
-//        else {
+//        else if (phone_orientation == Orientation.PORTRAIT_UP){
+//
+//            Mat col_temp = new Mat();
+//            Core.transpose(col, col_temp);
+//            Core.flip(col_temp, output, 0);
+//        }
+        else {
 //            Mat col_temp = new Mat();
 //            Core.flip(col,output,1);
-//        }
+
+            output = col;
+        }
 
 
-        return col;
+        return output;
     }
 
     private Point deriveNoseCentre(Rect face, Rect eye1, Rect eye2){
