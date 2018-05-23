@@ -303,28 +303,38 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
 //            Mat col_temp = new Mat();
             Core.flip(col, output, 0);
-//            Core.flip(col_temp,output,1);
         }
-//        else if (phone_orientation == Orientation.LANDSCAPE_L){
-//
-//            Mat col_temp = new Mat();
-//            Core.flip(col,output,1);
-//        }
-//        else if (phone_orientation == Orientation.PORTRAIT_UP){
-//
+        else if (phone_orientation == Orientation.LANDSCAPE_L){
+
+            output = col;
+        }
+        else if (phone_orientation == Orientation.PORTRAIT_UP){
+
 //            Mat col_temp = new Mat();
 //            Core.transpose(col, col_temp);
-//            Core.flip(col_temp, output, 0);
-//        }
+//            Core.flip(col, output, 1);
+            output = col;
+        }
+        else if (phone_orientation == Orientation.PORTRAIT_DOWN){
+
+//            Mat col_temp = new Mat();
+//            Core.transpose(col, col_temp);
+//            Core.flip(col, output, 1);
+            output = col;
+        }
         else {
 //            Mat col_temp = new Mat();
 //            Core.flip(col,output,1);
 
-            output = col;   
+            output = col;
         }
 
 
-        return output;
+        //flip around vertical for mirror image in front camera
+        Mat mirrored_output = new Mat();
+        Core.flip(output, mirrored_output, 1);
+
+        return mirrored_output;
     }
 
     private Point deriveNoseCentre(Rect face, Rect eye1, Rect eye2){
