@@ -3,9 +3,11 @@ package com.example.mis.opencv;
 
 import org.opencv.android.BaseLoaderCallback;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewFrame;
+import org.opencv.android.JavaCameraView;
 import org.opencv.android.LoaderCallbackInterface;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.android.CameraBridgeViewBase;
 import org.opencv.android.CameraBridgeViewBase.CvCameraViewListener2;
@@ -20,6 +22,7 @@ import org.opencv.objdetect.Objdetect;
 
 import android.app.Activity;
 import android.content.Context;
+import android.hardware.Camera;
 import android.hardware.SensorManager;
 import android.os.Bundle;
 import android.util.Log;
@@ -65,8 +68,13 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     private Mat roi;
     private Mat col;
     private Mat grey;
+    private Mat mirrored_output;
+    private Mat output;
+    private Mat init_col;
+    private Mat init_grey;
     private MatOfRect eye_rects_m;
     private List<Rect> eye_rects = new ArrayList<Rect>();
+    private ArrayList<Rect> rects = new ArrayList<>();
     private MatOfRect rects_m;
 
     private Display display;
@@ -86,8 +94,15 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                     String ec_path = initAssetFile("haarcascade_eye.xml");
                     eye_cascade = new CascadeClassifier(ec_path);
 
-                    col = new Mat();
-                    grey = new Mat();
+
+                    col = new Mat(960,1280, CvType.CV_64FC4);
+                    grey = new Mat(960,1280, CvType.CV_64FC4);
+                    mirrored_output = new Mat(960,1280, CvType.CV_64FC4);
+                    output = new Mat(960,1280, CvType.CV_64FC4);
+                    init_col = new Mat(960,1280, CvType.CV_64FC4);
+                    init_grey = new Mat(960,1280, CvType.CV_64FC4);
+
+                    rects_m = new MatOfRect();
                 } break;
                 default:
                 {
@@ -149,6 +164,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
         if (display != null)
             display = null;
+
     }
 
 
@@ -178,6 +194,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             mOpenCvCameraView.disableView();
 
         mOrientationListener.disable();
+
     }
 
     public void onCameraViewStarted(int width, int height) {
@@ -189,46 +206,62 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
     public Mat onCameraFrame(CvCameraViewFrame inputFrame) {
 
-        Mat init_col = inputFrame.rgba();
-        Mat init = inputFrame.gray();
-//        col  = inputFrame.rgba();
-//        grey = inputFrame.gray();
-        rects_m = new MatOfRect();
+        init_col = inputFrame.rgba();
+        init_grey = inputFrame.gray();
+
 
         //orientation correction
         if (phone_orientation == Orientation.LANDSCAPE_R){
 
-            Core.flip(init, grey, 0);
+            Core.flip(init_grey, grey, 0);
             Core.flip(init_col, col, 0);
         }
-//        if (phone_orientation == Orientation.LANDSCAPE_L){
-//
-//            col = init_col;
-//            grey = init;
-//        }
+        else if (phone_orientation == Orientation.LANDSCAPE_L){
+
+            col = init_col;
+            grey = init_grey;
+        }
 //        else if (phone_orientation == Orientation.PORTRAIT_UP){
 //
-//            Mat grey_temp = new Mat();
-//            Mat col_temp = new Mat();
+////            Mat grey_temp = new Mat();
+////            Mat col_temp = new Mat();
+////
+////            Core.flip(init,grey_temp,0);
+////            Core.flip(init_col, col_temp, 0);
 //
-//            Core.flip(init,grey_temp,0);
-//            Core.flip(init_col, col_temp, 0);
+////            Core.transpose(init, grey);
+////            Core.transpose(init_col, col);
 //
-//            Core.transpose(grey_temp, grey);
-//            Core.transpose(col_temp, col);
+////            Core.transpose(grey_temp, grey);
+////            Core.transpose(col_temp, col);
+//
+//
+//
+//            col = init_col;
+//            grey = init_grey;
+
+////            grey_temp.release();
+////            col_temp.release();
 //        }
         else{
             col = init_col;
-            grey = init;
+            grey = init_grey;
         }
 
+//        col = init_col;
+//        grey = init_grey;
+
+
+        //release init matrices
+//        init_col.release();
+//        init.release();
 
         if (face_cascade != null){
             face_cascade.detectMultiScale(grey, rects_m, 1.2, 3, 2,
                     new Size(absoluteFaceSize, absoluteFaceSize), new Size(mOpenCvCameraView.getWidth(),mOpenCvCameraView.getWidth()));
 
+
             if (!rects_m.empty()){
-                ArrayList<Rect> rects = new ArrayList<>();
                 rects.addAll(rects_m.toList());
 
                 //check against overlaps to avoid painting multiple noses on the same person
@@ -262,6 +295,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
                 //process faces to find eyes
                 for (Rect r : rects){
+
                     Imgproc.rectangle(col, r.tl(), r.br(), new Scalar(255,255,255), 3);
 
                     //find eyes
@@ -295,17 +329,15 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             }
         }
 
-        rects_m.release();
+//        rects_m.release();
+
+        rects.clear();
 
         //orientation correction
-        Mat output = new Mat();
         if (phone_orientation == Orientation.LANDSCAPE_R){
-
-//            Mat col_temp = new Mat();
             Core.flip(col, output, 0);
         }
         else if (phone_orientation == Orientation.LANDSCAPE_L){
-
             output = col;
         }
         else if (phone_orientation == Orientation.PORTRAIT_UP){
@@ -322,17 +354,17 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 //            Core.flip(col, output, 1);
             output = col;
         }
-        else {
-//            Mat col_temp = new Mat();
-//            Core.flip(col,output,1);
-
+        else {//default
             output = col;
         }
 
 
-        //flip around vertical for mirror image in front camera
-        Mat mirrored_output = new Mat();
+//        flip around vertical for mirror image in front camera
         Core.flip(output, mirrored_output, 1);
+
+//        grey.release();
+//        col.release();
+//        output.release();
 
         return mirrored_output;
     }
