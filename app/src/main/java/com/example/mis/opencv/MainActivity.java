@@ -58,6 +58,9 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     }
     Orientation phone_orientation;
 
+    //change to see face and eye frames
+    boolean DRAW_FRAMES = false;
+
     //containers for face and eye rectangles
     private Mat roi;
     private Mat col;
@@ -94,19 +97,19 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                     String ec_path = initAssetFile("haarcascade_eye.xml");
                     eye_cascade = new CascadeClassifier(ec_path);
 
-
-                    col = new Mat(960,1280, CvType.CV_64FC4);
-                    grey = new Mat(960,1280, CvType.CV_64FC1);
-                    col_port = new Mat(1280,960, CvType.CV_64FC4);
-                    grey_port = new Mat(1280,960, CvType.CV_64FC1);
-                    col_temp = new Mat(1280,960, CvType.CV_64FC4);
-                    grey_temp = new Mat(1280,960, CvType.CV_64FC1);
-                    mirrored_output = new Mat(960,1280, CvType.CV_64FC4);
-                    output = new Mat(960,1280, CvType.CV_64FC4);
-                    init_col = new Mat(960,1280, CvType.CV_64FC4);
-                    init_grey = new Mat(960,1280, CvType.CV_64FC1);
-                    col_temp = new Mat(960,1280, CvType.CV_64FC4);
-                    grey_temp = new Mat(960,1280, CvType.CV_64FC1);
+                    //create here to avoid doing it during frame processing
+                    col = new Mat(960,1280, CvType.CV_8UC4);
+                    grey = new Mat(960,1280, CvType.CV_8U);
+                    col_port = new Mat(1280,960, CvType.CV_8UC4);
+                    grey_port = new Mat(1280,960, CvType.CV_8U);
+                    col_temp = new Mat(1280,960, CvType.CV_8UC4);
+                    grey_temp = new Mat(1280,960, CvType.CV_8U);
+                    mirrored_output = new Mat(960,1280, CvType.CV_8UC4);
+                    output = new Mat(960,1280, CvType.CV_8UC4);
+                    init_col = new Mat(960,1280, CvType.CV_8UC4);
+                    init_grey = new Mat(960,1280, CvType.CV_8U);
+                    col_temp = new Mat(960,1280, CvType.CV_8UC4);
+                    grey_temp = new Mat(960,1280, CvType.CV_8U);
 
                     DRAW_IMG = new Mat();
                     INPUT_IMG = new Mat();
@@ -135,13 +138,9 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
 
         setContentView(R.layout.activity_main);
-
         mOpenCvCameraView = (CameraBridgeViewBase) findViewById(R.id.tutorial1_activity_java_surface_view);
-
         mOpenCvCameraView.setVisibility(SurfaceView.VISIBLE);
-
         mOpenCvCameraView.setCvCameraViewListener(this);
-
 
         mOrientationListener = new OrientationEventListener(this,
                 SensorManager.SENSOR_DELAY_NORMAL) {
@@ -157,7 +156,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             Log.d(TAG, "onCreate: cannot detect orientation");
             mOrientationListener.disable();
         }
-
     }
 
     @Override
@@ -178,8 +176,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
     }
 
-
-
     @Override
     public void onResume()
     {
@@ -193,8 +189,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         }
 
         display = ((WindowManager) getSystemService(Context.WINDOW_SERVICE)).getDefaultDisplay();
-
-
         eye_rects = new ArrayList<Rect>();
 
     }
@@ -205,7 +199,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             mOpenCvCameraView.disableView();
 
         mOrientationListener.disable();
-
     }
 
     public void onCameraViewStarted(int width, int height) {
@@ -261,9 +254,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                 INPUT_IMG = grey;
             }
 
-            face_cascade.detectMultiScale(INPUT_IMG, rects_m, 1.2, 3, 2,
+            face_cascade.detectMultiScale(INPUT_IMG, rects_m, 1.2, 4, 0,
                     new Size(minAbsoluteFaceSize, minAbsoluteFaceSize), new Size(maxAbsoluteFaceSize,maxAbsoluteFaceSize));
-
 
 
             if (!rects_m.empty()){
@@ -283,16 +275,13 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                                 if (a1 > a2){
                                     rects.remove(rectToCheck);
                                     i--;
-                                    Log.d(TAG, "onCameraFrame: remove j");
                                 }
                                 else{
                                     rects.remove(i);
-                                    Log.d(TAG, "onCameraFrame: remove i");
                                     break;
                                 }
 
                             }
-
                         }
                         rectToCheck--;
                     }
@@ -301,26 +290,29 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                 //process faces to find eyes
                 for (Rect r : rects){
 
-                    Imgproc.rectangle(DRAW_IMG, r.tl(), r.br(), new Scalar(255,255,255), 3);
+                    if (DRAW_FRAMES) Imgproc.rectangle(DRAW_IMG, r.tl(), r.br(), new Scalar(255,255,255), 3);
                     roi = new Mat(INPUT_IMG, r);
 
                     //find eyes
                     eye_rects_m = new MatOfRect();
-                    eye_cascade.detectMultiScale(roi, eye_rects_m, 1.1, 5, 15,
+                    eye_cascade.detectMultiScale(roi, eye_rects_m, 1.1, 20, 0,
                             new Size(minAbsoluteFaceSize/8, minAbsoluteFaceSize/8), new Size(roi.width()/2, roi.height()/2));
 
                     if (!eye_rects_m.empty()){
                         eye_rects = eye_rects_m.toList();
                         for (Rect er : eye_rects){
                             //draw eyes
-                            Imgproc.rectangle(DRAW_IMG, addPoints(er.tl(), r.tl()), addPoints(er.br(), r.tl()), new Scalar(0,100,255), 3);
+                            if (DRAW_FRAMES) Imgproc.rectangle(DRAW_IMG, addPoints(er.tl(), r.tl()), addPoints(er.br(), r.tl()), new Scalar(0,100,255), 3);
 
                         }
                     }
 
                     //derive nose centre from 2 eye positions, if at least 2 exist
                     if (eye_rects.size() >= 2){
-                        Point nose_centre = deriveNoseCentre(r, eye_rects.get(0), eye_rects.get(1));
+
+                        //find 2 largest eyes
+                        int[] eye_idxs = findLargestEyeIndexes(eye_rects);
+                        Point nose_centre = deriveNoseCentre(r, eye_rects.get(eye_idxs[0]), eye_rects.get(eye_idxs[1]));
                         //draw a nose
                         Imgproc.circle(DRAW_IMG, nose_centre, r.height / 8, new Scalar(255,0,0), -1);
 
@@ -328,7 +320,6 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                     else {
                         //use centre of rectangle
                         Point cntr = new Point(r.x + r.width/2, r.y + r.height/2);
-
                         Imgproc.circle(DRAW_IMG, cntr, r.height / 8, new Scalar(255,0,0), -1);
 
                     }
@@ -357,11 +348,29 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             output = col;
         }
 
-
 //        flip around vertical for mirror image in front camera
         Core.flip(output, mirrored_output, 1);
-
         return mirrored_output;
+    }
+
+    private int[] findLargestEyeIndexes(List<Rect> eyes){
+
+        int largest[] = {0,0};
+        double area[] = {0.0, 0.0};
+        for (int i = 0; i < eyes.size(); i++){
+            if (eyes.get(i).area() > area[0]) {
+                area[0] = eyes.get(i).area();
+                largest[0] = i;
+            }
+        }
+        for (int i = 0; i < eyes.size(); i++){
+            if (eyes.get(i).area() > area[1]
+                    && i != largest[0]) {
+                area[1] = eyes.get(i).area();
+                largest[1] = i;
+            }
+        }
+        return largest;
     }
 
     private Point deriveNoseCentre(Rect face, Rect eye1, Rect eye2){
@@ -371,8 +380,30 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         Point eye2_corner = pointClosestToCenter(eye2,face);
         Point mid_point = midPoint(eye1_corner, eye2_corner);
 
+//        double dx = (eye2_corner.x - eye1_corner.x);
+//        double dy = (eye2_corner.y - eye1_corner.y);
+//        double inverse_grad;
+//        if (dx != 0.0 && dy != 0.0){
+//            double eye_line_grad = dy/dx;
+//            inverse_grad = -1 / eye_line_grad;
+//        }
+//        else {
+//            if (dx == 0.0)
+//                inverse_grad = 0;
+//            else
+//                inverse_grad = Double.MAX_VALUE;
+//        }
+//        //travel by 'nose offset' along inverse eyeline and place nose there
+//        double nose_offset = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2));
+//        double angle = Math.atan2(inverse_grad,1) + Math.PI;
+//        double nose_dy = Math.sin(angle) * nose_offset;
+//        double nose_dx = Math.cos(angle) * nose_offset;
+//        Point nosePoint = new Point(mid_point.x + nose_dx, mid_point.y + nose_dy);
+
+        //place nose
+        Point nosePoint = new Point(mid_point.x, mid_point.y + face.height/8);
         //correct to face co-ordinates
-        return addPoints(mid_point, face.tl());
+        return addPoints(nosePoint, face.tl());
     }
 
     private Point pointClosestToCenter(Rect eye, Rect face){
@@ -443,22 +474,17 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
     //quantise orientation to 4 directions
     private void updateOrientation(int angle){
-
         if (angle < 45){
             phone_orientation = Orientation.PORTRAIT_UP;
-//            Log.d(TAG, "updateOrientation: portrait up");
         }
         else if (angle < 135) {
             phone_orientation = Orientation.LANDSCAPE_R;
-//            Log.d(TAG, "updateOrientation: landscape right");
         }
         else if (angle < 225) {
             phone_orientation = Orientation.PORTRAIT_DOWN;
-//            Log.d(TAG, "updateOrientation: portrait down");
         }
         else if (angle < 315) {
             phone_orientation = Orientation.LANDSCAPE_L;
-//            Log.d(TAG, "updateOrientation: landscape left");
         }
         else {
             phone_orientation = Orientation.PORTRAIT_UP;
