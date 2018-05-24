@@ -45,7 +45,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     private MenuItem             mItemSwitchCamera = null;
 
     private CascadeClassifier face_cascade;
-    private int absoluteFaceSize;
+    private int maxAbsoluteFaceSize;
+    private int minAbsoluteFaceSize;
     private CascadeClassifier eye_cascade;
 
     private OrientationEventListener mOrientationListener;
@@ -95,17 +96,17 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
 
                     col = new Mat(960,1280, CvType.CV_64FC4);
-                    grey = new Mat(960,1280, CvType.CV_64FC4);
+                    grey = new Mat(960,1280, CvType.CV_64FC1);
                     col_port = new Mat(1280,960, CvType.CV_64FC4);
-                    grey_port = new Mat(1280,960, CvType.CV_64FC4);
+                    grey_port = new Mat(1280,960, CvType.CV_64FC1);
                     col_temp = new Mat(1280,960, CvType.CV_64FC4);
-                    grey_temp = new Mat(1280,960, CvType.CV_64FC4);
+                    grey_temp = new Mat(1280,960, CvType.CV_64FC1);
                     mirrored_output = new Mat(960,1280, CvType.CV_64FC4);
                     output = new Mat(960,1280, CvType.CV_64FC4);
                     init_col = new Mat(960,1280, CvType.CV_64FC4);
-                    init_grey = new Mat(960,1280, CvType.CV_64FC4);
+                    init_grey = new Mat(960,1280, CvType.CV_64FC1);
                     col_temp = new Mat(960,1280, CvType.CV_64FC4);
-                    grey_temp = new Mat(960,1280, CvType.CV_64FC4);
+                    grey_temp = new Mat(960,1280, CvType.CV_64FC1);
 
                     DRAW_IMG = new Mat();
                     INPUT_IMG = new Mat();
@@ -208,7 +209,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
     }
 
     public void onCameraViewStarted(int width, int height) {
-        absoluteFaceSize = (int) (height * 0.1);
+        minAbsoluteFaceSize = (int) (height * 0.2);
+        maxAbsoluteFaceSize = (int) (height);
     }
 
     public void onCameraViewStopped() {
@@ -219,8 +221,8 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
         init_col = inputFrame.rgba();
         init_grey = inputFrame.gray();
 
-
-        //orientation correction
+        //orientation correction - flip/transpose input so that
+        //face input to haar cascades likely to be aligned with matrix
         if (phone_orientation == Orientation.LANDSCAPE_R){
 
             Core.flip(init_grey, grey, 0);
@@ -232,29 +234,19 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             grey = init_grey;
         }
         else if (phone_orientation == Orientation.PORTRAIT_UP){
-
-
-
             Core.transpose(init_grey, grey_temp);
             Core.transpose(init_col, col_temp);
-
-
             Core.flip(grey_temp,grey_port,0);
             Core.flip(col_temp, col_port, 0);
-
+        }
+        else if (phone_orientation == Orientation.PORTRAIT_DOWN){
+            Core.transpose(init_grey, grey_port);
+            Core.transpose(init_col, col_port);
         }
         else{
             col = init_col;
             grey = init_grey;
         }
-
-//        col = init_col;
-//        grey = init_grey;
-
-
-        //release init matrices
-//        init_col.release();
-//        init.release();
 
         if (face_cascade != null){
 
@@ -270,7 +262,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
             }
 
             face_cascade.detectMultiScale(INPUT_IMG, rects_m, 1.2, 3, 2,
-                    new Size(absoluteFaceSize, absoluteFaceSize), new Size(mOpenCvCameraView.getWidth(),mOpenCvCameraView.getWidth()));
+                    new Size(minAbsoluteFaceSize, minAbsoluteFaceSize), new Size(maxAbsoluteFaceSize,maxAbsoluteFaceSize));
 
 
 
@@ -315,7 +307,7 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
                     //find eyes
                     eye_rects_m = new MatOfRect();
                     eye_cascade.detectMultiScale(roi, eye_rects_m, 1.1, 5, 15,
-                            new Size(absoluteFaceSize/8, absoluteFaceSize/8), new Size(roi.width()/2, roi.height()/2));
+                            new Size(minAbsoluteFaceSize/8, minAbsoluteFaceSize/8), new Size(roi.width()/2, roi.height()/2));
 
                     if (!eye_rects_m.empty()){
                         eye_rects = eye_rects_m.toList();
@@ -357,14 +349,9 @@ public class MainActivity extends Activity implements CvCameraViewListener2 {
 
             Core.flip(col_port, col_temp, 0);
             Core.transpose(col_temp, output);
-//            Core.flip(col, output, 1);
-//            output = col;
         }
         else if (phone_orientation == Orientation.PORTRAIT_DOWN){
-
-//            Core.transpose(col, col_temp);
-//            Core.flip(col, output, 1);
-            output = col;
+            Core.transpose(col_port, output);
         }
         else {//default
             output = col;
